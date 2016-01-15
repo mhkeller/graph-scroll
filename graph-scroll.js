@@ -1,8 +1,17 @@
+if (typeof exports !== 'undefined') {
+  if (typeof module !== 'undefined' && module.exports) {
+    exports = module.exports = graphScroll;
+  }
+  exports.graphScroll = graphScroll;
+} else {
+  root.graphScroll = graphScroll;
+}
+
 function graphScroll() {
   var windowHeight,
       dispatch = d3.dispatch("scroll", "active"),
       sections = d3.select('null'),
-      i = NaN,
+      i = -1,
       sectionPos = [],
       n,
       graph = d3.select('null'),
@@ -11,31 +20,38 @@ function graphScroll() {
       container = d3.select('body'),
       containerStart = 0,
       belowStart,
-      eventId = Math.random()
+      eventId = Math.random(), 
+      stickyTop
 
   function reposition(){
     var i1 = 0
     sectionPos.forEach(function(d, i){
-      if (d < pageYOffset - containerStart + 200) i1 = i
+      if (d < pageYOffset - containerStart + 180) i1 = i
     })
     i1 = Math.min(n - 1, i1)
     if (i != i1){
       sections.classed('graph-scroll-active', function(d, i){ return i === i1 })
 
-      dispatch.active(i1)
+      dispatch.active.call(sections[0][i1], i1, i)
 
       i = i1
     }
 
-    var isBelow1 = pageYOffset > belowStart
+    var isBelow1 = pageYOffset > belowStart - 120
     if (isBelow != isBelow1){
       isBelow = isBelow1
       graph.classed('graph-scroll-below', isBelow)
     }
-    var isFixed1 = !isBelow && pageYOffset > containerStart
+
+    var isFixed1 = !isBelow && pageYOffset > containerStart - 120
     if (isFixed != isFixed1){
       isFixed = isFixed1
-      graph.classed('graph-scroll-fixed', isFixed)
+      graph
+        .classed('graph-scroll-fixed', isFixed)
+    }
+
+    if (stickyTop){
+      graph.style('padding-top', (isBelow || isFixed ? stickyTop : 0)+ 'px')
     }
   }
 
@@ -74,20 +90,28 @@ function graphScroll() {
     }
 
     var i1 = Math.max(0, Math.min(i + delta, n - 1))
-    d3.select(document.documentElement)
-        .interrupt()
-      .transition()
-        .duration(500)
-        .tween("scroll", function() {
-          var i = d3.interpolateNumber(pageYOffset, sectionPos[i1] + containerStart)
-          return function(t) { scrollTo(0, i(t)) }
-        })
+    rv.scrollTo(i1)
 
     d3.event.preventDefault()
   }
 
 
   var rv ={}
+
+  rv.scrollTo = function(_x){
+    if (isNaN(_x)) return rv
+
+    d3.select(document.documentElement)
+        .interrupt()
+      .transition()
+        .duration(500)
+        .tween("scroll", function() {
+          var i = d3.interpolateNumber(pageYOffset, sectionPos[_x] + containerStart)
+          return function(t) { scrollTo(0, i(t)) }
+        })
+    return rv
+  }
+
 
   rv.container = function(_x){
     if (!_x) return container
@@ -110,6 +134,13 @@ function graphScroll() {
     return rv
   }
 
+  rv.stickyTop = function(_x){
+    if (!_x) return stickyTop
+
+    stickyTop = _x
+    return rv
+  }
+
   rv.sections = function (_x){
     if (!_x) return sections
 
@@ -120,7 +151,7 @@ function graphScroll() {
         .on('scroll.gscroll'  + eventId, reposition)
         .on('resize.gscroll'  + eventId, resize)
         .on('keydown.gscroll' + eventId, keydown)
-    
+
     resize()
     d3.timer(function() {
       reposition()
