@@ -26,8 +26,13 @@
 
     function reposition(){
       var i1 = 0
+      var vh = Math.max(document.documentElement.clientHeight, window.innerHeight || 0)
+
       sectionPos.forEach(function(d, i){
-        if (d < pageYOffset - containerStart + 180) i1 = i
+        // Trigger active section when it gets to the middle of the viewport
+        if (d < (pageYOffset - containerStart + vh / 2) ) {
+          i1 = i
+        }
       })
       i1 = Math.min(n - 1, i1)
       if (i != i1){
@@ -38,21 +43,31 @@
         i = i1
       }
 
-      var isBelow1 = pageYOffset > belowStart - 120
+      var isBelow1 = pageYOffset > belowStart
       if (isBelow != isBelow1){
         isBelow = isBelow1
         graph.classed('graph-scroll-below', isBelow)
       }
 
-      var isFixed1 = !isBelow && pageYOffset > containerStart - 120
+      var yStickyOffset = stickyTop || 0
+
+      var isFixed1 = !isBelow && pageYOffset > containerStart - yStickyOffset
       if (isFixed != isFixed1){
         isFixed = isFixed1
         graph
           .classed('graph-scroll-fixed', isFixed)
       }
 
+      var top
       if (stickyTop){
-        graph.style('padding-top', (isBelow || isFixed ? stickyTop : 0)+ 'px')
+        if (isBelow) {
+          top = 'auto'
+        } else if (isFixed) {
+          top = stickyTop + 'px'
+        } else {
+          top = '0px'
+        }
+        graph.style('top', top)
       }
     }
 
